@@ -11,8 +11,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, MessageCircle, CalendarClock, CheckCheck, BellRing,
-  ShieldCheck, Send, Phone, Video, CalendarCheck, Clock, CheckCircle2, X, Stethoscope,
+  ShieldCheck, Send, Phone, Video, CalendarCheck, Clock, CheckCircle2, X, Stethoscope, Moon, Sun,
 } from "lucide-react";
+import "./dark.css";
 import { useLive } from "../lib/useLive";
 import { supabase } from "../lib/supabase-browser";
 
@@ -184,6 +185,22 @@ function Chat({ onMessage }) {
 }
 
 /* ---------- app ---------- */
+function DarkToggle() {
+  const [dark, setDark] = useState(false);
+  const apply = (on) => document.documentElement.classList.toggle("dark", on);
+  useEffect(() => {
+    let saved = null; try { saved = localStorage.getItem("cf-dark"); } catch {}
+    const on = saved ? saved === "1" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setDark(on); apply(on);
+  }, []);
+  const flip = () => { const on = !dark; setDark(on); apply(on); try { localStorage.setItem("cf-dark", on ? "1" : "0"); } catch {} };
+  return (
+    <button onClick={flip} aria-label="Toggle dark mode" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50">
+      {dark ? <Sun size={17} /> : <Moon size={17} />}
+    </button>
+  );
+}
+
 export default function Page() {
   const live = useLive(); // live mode only when Supabase env vars are set; otherwise demo data
   if (live.enabled && !live.ready) return null;
@@ -197,6 +214,7 @@ function Login() {
   const cls = "w-full rounded-lg px-3 py-2.5 text-sm ring-1 ring-slate-300 focus:outline-sky-500";
   return (
     <div className="grid min-h-screen place-items-center bg-slate-50 p-4">
+      <div className="fixed right-4 top-4"><DarkToggle /></div>
       <form onSubmit={go} className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-6 ring-1 ring-slate-200">
         <h1 className="text-xl font-semibold text-slate-900">ClinicFlow AI</h1>
         <p className="text-sm text-slate-500">Sign in to your clinic dashboard</p>
@@ -328,7 +346,8 @@ function App({ live }) {
       <main className="px-4 pb-28 pt-5 lg:ml-64 lg:px-8 lg:pb-10">
         <header className="mb-5 flex flex-wrap items-center justify-between gap-2">
           <div><h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{live?.clinic?.name || CLINIC}</h1><p className="text-sm text-slate-500">{new Date().toLocaleDateString("en", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"><i className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />AI receptionist live</span>
+          <span className="ml-auto inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"><i className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />AI receptionist live</span>
+          <DarkToggle />
         </header>
 
         {tab === "dash" && (

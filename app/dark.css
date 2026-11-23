@@ -1,0 +1,47 @@
+/* Dark mode: remaps the Tailwind colors used in page.js when <html class="dark">. Works on Tailwind v3 and v4. */
+html.dark { color-scheme: dark; }
+html.dark body { background: #0b1220; }
+.dark input, .dark select { background: #0f172a; color: #e2e8f0; }
+.dark ::placeholder { color: #64748b; }
+
+/* surfaces */
+.dark .bg-slate-50 { background-color: #0b1220; }
+.dark .bg-white { background-color: #111a2e; }
+.dark .bg-white\/95 { background-color: rgba(11, 18, 32, .95); }
+.dark .bg-slate-100 { background-color: #1e293b; }
+.dark .bg-slate-300 { background-color: #475569; }
+.dark .hover\:bg-slate-50:hover { background-color: #1e293b; }
+
+/* text */
+.dark .text-slate-900 { color: #f8fafc; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #b6c2d3; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #7b8aa0; }
+
+/* borders, rings, dividers */
+.dark .border-slate-100, .dark .border-slate-200 { border-color: #243049; }
+.dark .divide-slate-100 > :not(:last-child) { border-color: #1e293b; }
+.dark .ring-slate-200 { --tw-ring-color: #243049; }
+.dark .ring-slate-300 { --tw-ring-color: #334155; }
+
+/* blue / status tints */
+.dark .bg-sky-50, .dark .hover\:bg-sky-50:hover { background-color: rgba(14, 165, 233, .16); }
+.dark .bg-sky-50\/70 { background-color: rgba(14, 165, 233, .12); }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, .16); }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, .16); }
+.dark .bg-violet-50 { background-color: rgba(139, 92, 246, .18); }
+.dark .text-sky-700, .dark .text-sky-600 { color: #7dd3fc; }
+.dark .text-emerald-700, .dark .text-emerald-600 { color: #6ee7b7; }
+.dark .text-amber-700, .dark .text-amber-600 { color: #fcd34d; }
+.dark .text-violet-700, .dark .text-violet-600 { color: #c4b5fd; }
+.dark .ring-sky-200, .dark .ring-sky-300 { --tw-ring-color: rgba(56, 189, 248, .4); }
+.dark .ring-emerald-200 { --tw-ring-color: rgba(16, 185, 129, .4); }
+.dark .ring-amber-200 { --tw-ring-color: rgba(245, 158, 11, .4); }
+.dark .ring-violet-200 { --tw-ring-color: rgba(139, 92, 246, .4); }
+
+/* WhatsApp chat */
+.dark .bg-\[\#efeae2\] { background-color: #0b141a; }
+.dark .bg-\[\#d9fdd3\] { background-color: #005c4b; }
+.dark .bg-\[\#fff5c4\] { background-color: #3b3720; }
