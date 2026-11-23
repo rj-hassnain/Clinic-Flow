@@ -45,3 +45,8 @@ html.dark body { background: #0b1220; }
 .dark .bg-\[\#efeae2\] { background-color: #0b141a; }
 .dark .bg-\[\#d9fdd3\] { background-color: #005c4b; }
 .dark .bg-\[\#fff5c4\] { background-color: #3b3720; }
+
+/* errors */
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, .15); }
+.dark .text-red-700 { color: #fca5a5; }
+.dark .ring-red-200 { --tw-ring-color: rgba(239, 68, 68, .35); }

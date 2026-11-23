@@ -11,7 +11,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   LayoutDashboard, MessageCircle, CalendarClock, CheckCheck, BellRing,
-  ShieldCheck, Send, Phone, Video, CalendarCheck, Clock, CheckCircle2, X, Stethoscope, Moon, Sun,
+  ShieldCheck, Send, Phone, Video, CalendarCheck, Clock, CheckCircle2, X, Stethoscope, Moon, Sun, Eye, EyeOff, Loader2, LogOut,
 } from "lucide-react";
 import "./dark.css";
 import { useLive } from "../lib/useLive";
@@ -204,27 +204,126 @@ function DarkToggle() {
 export default function Page() {
   const live = useLive(); // live mode only when Supabase env vars are set; otherwise demo data
   if (live.enabled && !live.ready) return null;
-  if (live.enabled && !live.session) return <Login />;
+  if (live.enabled && !live.session) return <AuthScreen />;
+  if (live.enabled && live.loading) return null;
+  if (live.enabled && live.needsSetup) return <Onboard live={live} />;
   return <App live={live.enabled ? live : null} />;
 }
 
-function Login() {
-  const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [err, setErr] = useState("");
-  const go = async (e) => { e.preventDefault(); const { error } = await supabase.auth.signInWithPassword({ email, password: pw }); if (error) setErr(error.message); };
-  const cls = "w-full rounded-lg px-3 py-2.5 text-sm ring-1 ring-slate-300 focus:outline-sky-500";
+const field = "w-full rounded-lg bg-white px-3.5 py-2.5 text-sm text-slate-900 ring-1 ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500";
+const CURS = ["PKR", "USD", "GBP", "EUR", "AED", "SAR", "CAD", "AUD", "INR"];
+
+function friendly(msg = "") {
+  const m = msg.toLowerCase();
+  if (m.includes("invalid login")) return "Incorrect email or password.";
+  if (m.includes("invalid api key") || m.includes("apikey")) return "The app cannot reach its database because the Supabase key in the deployment settings is wrong. Please contact support.";
+  if (m.includes("not confirmed")) return "Please confirm your email first. Check your inbox for the link.";
+  if (m.includes("already registered") || m.includes("already been registered")) return "An account with this email already exists. Try signing in instead.";
+  if (m.includes("at least")) return msg;
+  if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Please wait a minute and try again.";
+  if (m.includes("fetch") || m.includes("network")) return "Cannot connect. Check your internet connection and try again.";
+  return msg || "Something went wrong. Please try again.";
+}
+
+function AuthShell({ children }) {
+  const points = ["Automatic 24h and 2h WhatsApp reminders", "Patients book and reschedule by chat, in their own language", "A live schedule your whole team can trust"];
   return (
-    <div className="grid min-h-screen place-items-center bg-slate-50 p-4">
-      <div className="fixed right-4 top-4"><DarkToggle /></div>
-      <form onSubmit={go} className="w-full max-w-sm space-y-3 rounded-2xl bg-white p-6 ring-1 ring-slate-200">
-        <h1 className="text-xl font-semibold text-slate-900">ClinicFlow AI</h1>
-        <p className="text-sm text-slate-500">Sign in to your clinic dashboard</p>
-        <input className={cls} type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input className={cls} type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} required />
-        {err && <p className="text-sm text-red-600">{err}</p>}
-        <button className="w-full rounded-lg bg-sky-600 py-2.5 text-sm font-medium text-white hover:bg-sky-700">Sign in</button>
-        <p className="pt-2 text-center text-xs text-slate-400">Powered by <b className="text-slate-600">Innoletics</b></p>
-      </form>
+    <div className="grid min-h-screen bg-slate-50 lg:grid-cols-[1.05fr_1fr]">
+      <div className="fixed right-4 top-4 z-10"><DarkToggle /></div>
+      <div className="hidden flex-col justify-between p-12 text-white lg:flex" style={{ background: "linear-gradient(145deg,#075985,#0c4a6e 60%,#082f49)" }}>
+        <div className="flex items-center gap-2.5"><div className="grid h-9 w-9 place-items-center rounded-xl bg-white/15"><MessageCircle size={19} /></div><span className="text-lg font-semibold">ClinicFlow AI</span></div>
+        <div className="max-w-md space-y-6">
+          <h2 className="text-3xl font-semibold leading-tight">Fewer no-shows. A calmer front desk.</h2>
+          <p className="text-sky-100">An AI receptionist on your clinic WhatsApp that books, confirms and reschedules patients around the clock.</p>
+          <ul className="space-y-3 text-sm text-sky-50">{points.map((t) => <li key={t} className="flex items-center gap-2.5"><CheckCircle2 size={18} className="shrink-0 text-sky-300" />{t}</li>)}</ul>
+        </div>
+        <p className="text-xs text-sky-200">Powered by Innoletics</p>
+      </div>
+      <div className="flex items-start justify-center px-4 pt-24 sm:pt-[16vh]">{children}</div>
     </div>
+  );
+}
+
+function AuthScreen() {
+  const [mode, setMode] = useState("in");
+  const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [show, setShow] = useState(false);
+  const [err, setErr] = useState(""), [info, setInfo] = useState(""), [busy, setBusy] = useState(false);
+  const switchMode = (m) => { setMode(m); setErr(""); setInfo(""); };
+  const submit = async (e) => {
+    e.preventDefault(); if (busy) return;
+    setErr(""); setInfo(""); setBusy(true);
+    try {
+      if (mode === "in") {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password: pw });
+        if (error) setErr(friendly(error.message));
+      } else {
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: pw });
+        if (error) setErr(friendly(error.message));
+        else if (data.user?.identities?.length === 0) setErr(friendly("already registered"));
+        else if (!data.session) { setInfo("Account created. Check your email to confirm it, then sign in."); setMode("in"); }
+      }
+    } catch (x) { setErr(friendly(String(x?.message || x))); }
+    setBusy(false);
+  };
+  return (
+    <AuthShell>
+      <form onSubmit={submit} className="w-full max-w-[400px] rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-6 flex items-center gap-2.5 lg:hidden"><div className="grid h-9 w-9 place-items-center rounded-xl bg-sky-600 text-white"><MessageCircle size={19} /></div><span className="text-lg font-semibold text-slate-900">ClinicFlow AI</span></div>
+        <div className="mb-6 grid grid-cols-2 rounded-lg bg-slate-100 p-1 text-sm font-medium">
+          {[["in", "Sign in"], ["up", "Create account"]].map(([m, l]) => (
+            <button type="button" key={m} onClick={() => switchMode(m)} className={`rounded-md py-2 transition ${mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>{l}</button>
+          ))}
+        </div>
+        <h1 className="text-xl font-semibold text-slate-900">{mode === "in" ? "Welcome back" : "Start with ClinicFlow"}</h1>
+        <p className="mb-5 mt-1 text-sm text-slate-500">{mode === "in" ? "Sign in to your clinic dashboard." : "Create your account in under a minute."}</p>
+        <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+        <input className={`${field} mb-4`} type="email" autoComplete="email" placeholder="you@clinic.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+        <div className="relative mb-6">
+          <input className={`${field} pr-11`} type={show ? "text" : "password"} autoComplete={mode === "in" ? "current-password" : "new-password"} placeholder={mode === "in" ? "Your password" : "At least 6 characters"} value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} />
+          <button type="button" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{show ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+        </div>
+        <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-medium text-white transition hover:bg-sky-700 disabled:opacity-70">
+          {busy && <Loader2 size={16} className="animate-spin" />}{mode === "in" ? "Sign in" : "Create account"}
+        </button>
+        {err && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">{err}</p>}
+        {info && <p role="status" className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 ring-1 ring-emerald-200">{info}</p>}
+        <p className="mt-6 text-center text-xs text-slate-400">Powered by <b className="font-semibold text-slate-600">Innoletics</b></p>
+      </form>
+    </AuthShell>
+  );
+}
+
+function Onboard({ live }) {
+  const tz0 = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const zones = typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : [];
+  if (!zones.includes(tz0)) zones.unshift(tz0);
+  const [f, setF] = useState({ name: "", doctor: "", timezone: tz0, currency: "USD", avg_value: 100 });
+  const [err, setErr] = useState(""), [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  const go = async (e) => {
+    e.preventDefault(); if (busy) return; setBusy(true); setErr("");
+    const r = await live.onboard({ ...f, avg_value: Number(f.avg_value) });
+    if (!r.ok) setErr(r.error || "Could not create your clinic."); setBusy(false);
+  };
+  const L = (t) => <label className="mb-1 block text-sm font-medium text-slate-700">{t}</label>;
+  return (
+    <AuthShell>
+      <form onSubmit={go} className="w-full max-w-[400px] rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-200">
+        <h1 className="text-xl font-semibold text-slate-900">Set up your clinic</h1>
+        <p className="mb-5 mt-1 text-sm text-slate-500">These details can be changed later.</p>
+        {L("Clinic name")}<input className={`${field} mb-4`} placeholder="Smile & Glow Clinic" value={f.name} onChange={set("name")} required />
+        {L("Lead doctor")}<input className={`${field} mb-4`} placeholder="Dr. Jane Smith" value={f.doctor} onChange={set("doctor")} required />
+        {L("Timezone")}<select className={`${field} mb-4`} value={f.timezone} onChange={set("timezone")}>{zones.map((z) => <option key={z}>{z}</option>)}</select>
+        <div className="mb-6 grid grid-cols-2 gap-3">
+          <div>{L("Currency")}<select className={field} value={f.currency} onChange={set("currency")}>{CURS.map((c) => <option key={c}>{c}</option>)}</select></div>
+          <div>{L("Avg. visit value")}<input className={field} type="number" min="0" value={f.avg_value} onChange={set("avg_value")} /></div>
+        </div>
+        <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 py-2.5 text-sm font-medium text-white transition hover:bg-sky-700 disabled:opacity-70">{busy && <Loader2 size={16} className="animate-spin" />}Create clinic</button>
+        {err && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 ring-1 ring-red-200">{err}</p>}
+        <button type="button" onClick={live.signOut} className="mt-5 block w-full text-center text-sm text-slate-500 hover:text-slate-700">Use a different account</button>
+      </form>
+    </AuthShell>
   );
 }
 
@@ -348,6 +447,7 @@ function App({ live }) {
           <div><h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">{live?.clinic?.name || CLINIC}</h1><p className="text-sm text-slate-500">{new Date().toLocaleDateString("en", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</p></div>
           <span className="ml-auto inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200"><i className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />AI receptionist live</span>
           <DarkToggle />
+          {live && <button onClick={live.signOut} aria-label="Sign out" title="Sign out" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"><LogOut size={17} /></button>}
         </header>
 
         {tab === "dash" && (
