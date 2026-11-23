@@ -145,22 +145,22 @@ function Chat({ onMessage }) {
   const [msgs, setMsgs] = useState([{ id: 0, from: "bot", text: `Hi ${PATIENT.name.split(" ")[0]}! I'm the virtual receptionist at ${CLINIC}. I can book, confirm or reschedule your visit. How can I help?`, at: "9:00 AM" }]);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
-  const end = useRef(null);
-  useEffect(() => { end.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, typing]);
+  const box = useRef(null);
+  useEffect(() => { box.current?.scrollTo({ top: box.current.scrollHeight, behavior: "smooth" }); }, [msgs, typing]);
   const now = () => t12(`${pad(new Date().getHours())}:${pad(new Date().getMinutes())}`);
   const send = (t) => {
     const v = t.trim(); if (!v || typing) return;
     setMsgs((m) => [...m, { id: Date.now(), from: "me", text: v, at: now() }]); setText(""); setTyping(true);
-    setTimeout(async () => { const r = await onMessage(v); setTyping(false); setMsgs((m) => [...m, { id: Date.now() + 1, from: "bot", text: r, at: now() }]); }, 1000);
+    setTimeout(async () => { let r; try { r = await onMessage(v); } catch { r = "Could not reach the server. Please try again."; } setTyping(false); setMsgs((m) => [...m, { id: Date.now() + 1, from: "bot", text: r, at: now() }]); }, 1000);
   };
   return (
-    <section className="flex h-[620px] flex-col overflow-hidden rounded-2xl ring-1 ring-slate-200">
+    <section className="flex h-[calc(100dvh-13rem)] max-h-[640px] min-h-[440px] flex-col overflow-hidden rounded-2xl ring-1 ring-slate-200">
       <header className="flex items-center gap-3 bg-[#008069] px-4 py-3 text-white">
         <div className="grid h-10 w-10 place-items-center rounded-full bg-white/20"><Stethoscope size={20} /></div>
         <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{CLINIC}</p><p className="text-xs text-emerald-100">{typing ? "typing..." : "AI receptionist - online"}</p></div>
         <Video size={18} /><Phone size={18} />
       </header>
-      <div className="flex-1 space-y-2 overflow-y-auto bg-[#efeae2] p-3">
+      <div ref={box} className="flex-1 space-y-2 overflow-y-auto bg-[#efeae2] p-3">
         <p className="mx-auto w-fit rounded-lg bg-[#fff5c4] px-3 py-1 text-center text-xs text-slate-600">Testing as {PATIENT.name} ({PATIENT.phone})</p>
         {msgs.map((m) => (
           <div key={m.id} className={`flex ${m.from === "me" ? "justify-end" : ""}`}>
@@ -171,12 +171,11 @@ function Chat({ onMessage }) {
           </div>
         ))}
         {typing && <div className="w-fit rounded-xl bg-white px-4 py-3 shadow-sm"><span className="flex gap-1">{[0, 1, 2].map((i) => <i key={i} className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" style={{ animationDelay: `${i * 150}ms` }} />)}</span></div>}
-        <div ref={end} />
       </div>
       <div className="space-y-2 bg-slate-100 p-3">
-        <div className="flex gap-2 overflow-x-auto">{QUICK.map((q) => <button key={q} onClick={() => send(q)} className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-sky-700 ring-1 ring-sky-200 hover:bg-sky-50">{q}</button>)}</div>
+        <div className="flex flex-wrap gap-2">{QUICK.map((q) => <button key={q} onClick={() => send(q)} className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-sky-700 ring-1 ring-sky-200 hover:bg-sky-50">{q}</button>)}</div>
         <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex gap-2">
-          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message, e.g. Book botox Friday 11 AM" className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-sm outline-none ring-1 ring-slate-200 focus:ring-sky-400" />
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Type a message, e.g. Book botox Friday 11 AM" className="min-w-0 flex-1 rounded-full bg-white px-4 py-2.5 text-base outline-none sm:text-sm ring-1 ring-slate-200 focus:ring-sky-400" />
           <button aria-label="Send" className="grid h-10 w-10 place-items-center rounded-full bg-[#008069] text-white"><Send size={17} /></button>
         </form>
       </div>
@@ -210,7 +209,7 @@ export default function Page() {
   return <App live={live.enabled ? live : null} />;
 }
 
-const field = "w-full rounded-lg bg-white px-3.5 py-2.5 text-sm text-slate-900 ring-1 ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500";
+const field = "w-full rounded-lg bg-white px-3.5 py-2.5 text-base sm:text-sm text-slate-900 ring-1 ring-slate-300 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500";
 const CURS = ["PKR", "USD", "GBP", "EUR", "AED", "SAR", "CAD", "AUD", "INR"];
 
 function friendly(msg = "") {
